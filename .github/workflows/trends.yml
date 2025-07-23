@@ -2,32 +2,33 @@ name: Daily Google Trends Scraper
 
 on:
   schedule:
-    - cron: '30 2 * * *'  # 8:00 AM IST
+    - cron: '30 2 * * *'  # Runs every day at 8:00 AM Sri Lanka time (GMT+5:30)
   workflow_dispatch:
 
 jobs:
-  scrape-and-commit:
+  scrape:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install requests pandas
 
       - name: Run scraper
         run: python scraper.py
 
-      - name: Commit and push results
+      - name: Commit results
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'actions@github.com'
+          git config --global user.email "actions@github.com"
+          git config --global user.name "github-actions"
           git add data/trending_*.csv
-          git commit -m "Update trends for $(date '+%Y-%m-%d')" || echo "No new data"
+          git commit -m "Add trending keywords for $(date +'%Y-%m-%d')" || echo "No changes to commit"
           git push
