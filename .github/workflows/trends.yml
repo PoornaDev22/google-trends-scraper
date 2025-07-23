@@ -1,0 +1,36 @@
+name: Daily Google Trends Scraper
+
+on:
+  schedule:
+    - cron: '30 2 * * *'  # 8:00 AM IST (Sri Lanka time is UTC+5:30)
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  scrape-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        run: python scraper.py
+
+      - name: Commit and push results
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'actions@github.com'
+          git add trending_*.csv
+          git commit -m "Update trending keywords - $(date)"
+          git push
+        env:
+          # Need access token to push
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
