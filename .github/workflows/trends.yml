@@ -1,8 +1,10 @@
+# .github/workflows/scrape.yml
+
 name: Daily Google Trends Scraper
 
 on:
   schedule:
-    - cron: '30 2 * * *'  # Runs daily at 8:00 AM Sri Lanka time
+    - cron: "30 2 * * *"  # Every day at 8:00 AM Sri Lanka time (UTC+5:30)
   workflow_dispatch:
 
 jobs:
@@ -10,38 +12,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          pip install selenium pandas
-
-      - name: Install Chrome & ChromeDriver
-        run: |
           sudo apt-get update
-          sudo apt-get install -y unzip xvfb libxi6 wget
+          sudo apt-get install -y wget unzip xvfb libxi6 libgconf-2-4 libnss3 libxss1 libappindicator1 libindicator7
+          python -m pip install --upgrade pip
+          pip install pandas beautifulsoup4 selenium
+
+      - name: Install Chrome
+        run: |
           wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+
+      - name: Install matching ChromeDriver
+        run: |
           CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
-          wget https://chromedriver.storage.googleapis.com/$(curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
-          unzip chromedriver_linux64.zip
-          sudo mv chromedriver /usr/local/bin/
-          chromedriver --version
+          CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" | jq -r ".channels.Stable.version")
+          echo "Detected Chrome version: $CHROMEDRIVER_VERSION"
+          wget -q -O chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
+          unzip -o chromedriver.zip
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
 
       - name: Run scraper
-        run: python scraper.py
-
-      - name: Commit results
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          git add data/trending_*.csv
-          git commit -m "Add daily trending keywords"
-          git push
-        continue-on-error: true
+          python scraper.py
+
+      - name: Upload result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trending-csv
+          path: output/
