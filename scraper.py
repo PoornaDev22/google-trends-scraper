@@ -41,15 +41,25 @@ class TrendFetcher:
         return None
 
     def get_google_trends(self):
-        print("Fetching Google Trends...")
-        response = self.fetch_via_scraperapi("https://trends.google.com/trends/trendingsearches/daily?geo=US")
-        if response:
-            html = response.text
-            # Try parsing methods
-            trends = self._parse_google_v1(html) or self._parse_google_v2(html) or self._parse_google_fallback(html)
-            keywords = [t['keyword'] for t in trends]
-            print(f"✅ Found {len(keywords)} trends.")
-            return keywords
+    print("Fetching Google Trends JSON...")
+
+    api_url = "https://trends.google.com/trends/api/dailytrends?hl=en-US&tz=-330&geo=US&ns=15"
+    response = self.fetch_via_scraperapi(api_url)
+
+    if not response or not response.text.startswith(")]}',"):
+        print("❌ Failed to fetch or parse Google Trends JSON.")
+        return []
+
+    # Remove anti-JSON hijacking prefix
+    json_str = response.text[5:]
+    try:
+        data = json.loads(json_str)
+        trends_raw = data.get("default", {}).get("trendingSearchesDays", [])[0].get("trendingSearches", [])
+        keywords = [t["title"]["query"] for t in trends_raw if "title" in t and "query" in t["title"]]
+        print(f"✅ Extracted {len(keywords)} keywords from JSON")
+        return keywords[:10]
+    except Exception as e:
+        print(f"❌ JSON parsing error: {e}")
         return []
 
     def _parse_google_v1(self, html):
