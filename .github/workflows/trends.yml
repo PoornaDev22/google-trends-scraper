@@ -35,7 +35,7 @@ jobs:
           chromedriver --version
 
       - name: Run scraper
-        run: python selenium_scraper.py
+        run: python scraper.py
 
       - name: Commit results
         run: |
