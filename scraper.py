@@ -1,36 +1,41 @@
+# scraper.py
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
+from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime
-import os
 import time
+import os
 
-# Set Chrome options for headless mode
+# Setup headless Chrome options
 chrome_options = Options()
-chrome_options.add_argument("--headless")
+chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 
-# Initialize driver
+# Launch Chrome WebDriver
 driver = webdriver.Chrome(options=chrome_options)
 
-# Open the Google Trends page
-url = "https://trends.google.com/trending?geo=US"
+# Load Google Trends daily trending page
+url = "https://trends.google.com/trends/trendingsearches/daily?geo=US"
 driver.get(url)
-time.sleep(5)  # Wait for dynamic content to load
+time.sleep(5)  # Wait for JS to load
 
-# Extract trending keywords
-elements = driver.find_elements(By.CSS_SELECTOR, "div.feed-item span.title-text")
-keywords = [el.text.strip() for el in elements if el.text.strip()]
-
+# Parse the page
+soup = BeautifulSoup(driver.page_source, "html.parser")
 driver.quit()
 
-# Save results
-if keywords:
-    os.makedirs("data", exist_ok=True)
-    filename = f"data/trending_{datetime.now().strftime('%Y-%m-%d')}.csv"
-    pd.DataFrame(keywords, columns=["Keyword"]).to_csv(filename, index=False)
-    print(f"✅ Saved {len(keywords)} keywords to {filename}")
+# Extract trending search titles
+titles = [e.text for e in soup.select("div.feed-item div.details-top a")]
+if not titles:
+    print("No trending titles found!")
 else:
-    print("⚠️ No keywords found.")
+    print("Found trending titles:", titles)
+
+# Save to CSV
+today = datetime.now().strftime("%Y-%m-%d")
+df = pd.DataFrame(titles, columns=["Trending Searches"])
+os.makedirs("output", exist_ok=True)
+df.to_csv(f"output/trending_{today}.csv", index=False)
+print(f"Saved to output/trending_{today}.csv")
