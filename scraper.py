@@ -38,7 +38,16 @@ def save_keywords(keywords):
 
 if __name__ == "__main__":
     keywords = fetch_trending_keywords()
-    if keywords:
-        save_keywords(keywords)
+
+    print(f"Fetched {len(keywords)} keywords")
+    if not keywords:
+        with open("debug.html", "w", encoding="utf-8") as f:
+            f.write(requests.get(SCRAPER_API_URL, params={
+                'api_key': API_KEY,
+                'url': TARGET_URL,
+                'render': 'true'
+            }).text)
+        print("No keywords found. Saved response to debug.html")
     else:
-        print("No keywords found.")
+        save_keywords(keywords)
+
